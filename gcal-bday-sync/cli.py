@@ -30,18 +30,10 @@ def get_credentials():
     return creds
 
 
-@click.group()
-def cli():
-    pass
-
-
-@cli.command(name='bdays')
-def list_birthdays():
-    creds = get_credentials()
+def list_birthdays(peoples_service):
     page_size = 200
-    service = build('people', 'v1', credentials=creds)
 
-    results = service.people().connections().list(
+    results = peoples_service.people().connections().list(
         resourceName='people/me',
         personFields='names,birthdays',
         pageSize=page_size
@@ -69,8 +61,61 @@ def list_birthdays():
                     formatted = f"{month:02d}-{day:02d}"
                 birthdays.append((name, formatted))
 
-    for name, date in sorted(birthdays, key=lambda x: x[1]):
-        print(f"{name}: {date}")
+    return sorted(birthdays, key=lambda x: x[1])
+
+
+
+def create_birthday_event(calendar_service, name, date_str):
+    if len(date_str) == 5:
+        date_str = f"1970-{date_str}"
+
+    # Handle Feb 29 birthdays specially
+    if date_str.endswith("-02-29"):
+        rrule = 'RRULE:FREQ=YEARLY;BYMONTH=2;BYMONTHDAY=-1'
+    else:
+        rrule = 'RRULE:FREQ=YEARLY'
+
+    event = {
+        'summary': f"{name}’s Birthday",
+        'start': {'date': date_str},
+        'end': {'date': date_str},
+        'recurrence': [rrule],
+        'visibility': 'private',
+        'transparency': 'transparent',
+        'eventType': 'birthday',
+        'birthdayProperties': {
+            'type': 'birthday'
+        },
+    }
+
+    created = calendar_service.events().insert(
+        calendarId='primary',
+        body=event
+    ).execute()
+    return created.get('id')
+
+
+@click.group()
+def cli():
+    pass
+
+
+@cli.command(name='bdays')
+def bdays():
+    creds = get_credentials()
+    peoples_service = build('people', 'v1', credentials=creds)
+    calendar_service = build('calendar', 'v3', credentials=creds)
+
+    # Step 1: Get the list of all birthdays
+    birthdays = list_birthdays(peoples_service)
+
+    name, date = birthdays[0]
+    create_birthday_event(calendar_service, name, date)
+    # Step 2: Create a birthday event for each birthday
+    # for name, date in birthdays:
+    #     print(name, date)
+        # create_birthday_event(calendar_service, name, date)
+
 
 if __name__ == '__main__':
     cli()
