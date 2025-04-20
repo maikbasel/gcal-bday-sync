@@ -8,8 +8,8 @@
 <!-- TOC -->
 
 This tool exists because Google decided to stop automatically syncing birthdays from Contacts to Calendar due to legal
-regulations in Germany (
-see [details here](https://support.google.com/calendar/answer/13748346?hl=en&sjid=2163152615913692385-EU)). If you’re
+regulations in Germany
+(see [details here](https://support.google.com/calendar/answer/13748346?hl=en&sjid=2163152615913692385-EU)). If you’re
 annoyed by this change and want those birthdays back on your calendar as proper events, this script has you covered.
 
 ## Prerequisites
