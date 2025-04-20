@@ -127,7 +127,7 @@ def cli():
 def bdays():
     pass
 
-@cli.command()
+@bdays.command()
 def sync():
     creds = get_credentials()
     peoples_service = build('people', 'v1', credentials=creds)
