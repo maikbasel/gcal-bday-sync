@@ -64,10 +64,21 @@ def list_birthdays(peoples_service):
     return sorted(birthdays, key=lambda x: x[1])
 
 
+import hashlib
+
+
+def generate_event_id(name, date_str):
+    """
+    Generate a unique Google Calendar event ID based on the name and birthday.
+    The ID must be between 5 and 1024 characters long and only include valid characters.
+    """
+    unique_str = f"{name}-{date_str}".lower()
+    return hashlib.md5(unique_str.encode('utf-8')).hexdigest()
+
 
 def create_birthday_event(calendar_service, name, date_str):
     if len(date_str) == 5:
-        date_str = f"1970-{date_str}"
+        date_str = f"1970-{date_str}"  # Handle birthdays without a year
 
     # Handle Feb 29 birthdays specially
     if date_str.endswith("-02-29"):
@@ -75,7 +86,10 @@ def create_birthday_event(calendar_service, name, date_str):
     else:
         rrule = 'RRULE:FREQ=YEARLY'
 
+    event_id = generate_event_id(name, date_str)
+
     event = {
+        'id': event_id,
         'summary': f"{name}’s Birthday",
         'start': {'date': date_str},
         'end': {'date': date_str},
@@ -88,33 +102,41 @@ def create_birthday_event(calendar_service, name, date_str):
         },
     }
 
-    created = calendar_service.events().insert(
-        calendarId='primary',
-        body=event
-    ).execute()
-    return created.get('id')
+    try:
+        # Try to insert the event. If the ID already exists, an error will occur.
+        created = calendar_service.events().insert(
+            calendarId='primary',
+            body=event
+        ).execute()
+        print(f"Created event for {name}’s birthday on {date_str}.")
+        return created.get('id')
+    except Exception as e:
+        # Handle case where event already exists
+        if 'duplicate' in str(e).lower():
+            print(f"Event for {name}’s birthday on {date_str} already exists. Skipping.")
+        else:
+            print(f"An error occurred: {e}")
+        return None
 
 
 @click.group()
 def cli():
     pass
 
-
-@cli.command(name='bdays')
+@cli.group()
 def bdays():
+    pass
+
+@cli.command()
+def sync():
     creds = get_credentials()
     peoples_service = build('people', 'v1', credentials=creds)
     calendar_service = build('calendar', 'v3', credentials=creds)
 
-    # Step 1: Get the list of all birthdays
     birthdays = list_birthdays(peoples_service)
 
-    name, date = birthdays[0]
-    create_birthday_event(calendar_service, name, date)
-    # Step 2: Create a birthday event for each birthday
-    # for name, date in birthdays:
-    #     print(name, date)
-        # create_birthday_event(calendar_service, name, date)
+    for name, date in birthdays:
+        create_birthday_event(calendar_service, name, date)
 
 
 if __name__ == '__main__':
