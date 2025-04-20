@@ -120,10 +120,6 @@ def create_birthday_event(calendar_service, name, date_str):
 
 
 @click.group()
-def cli():
-    pass
-
-@cli.group()
 def bdays():
     pass
 
